@@ -269,8 +269,8 @@ function aurSetup() {
 }
 
 function extrasSetup() {
-    packagesArch="pacman-contrib qemu bridge-utils ovmf bleachbit gedit bleachbit chrome-gnome-shell clamtk code fail2ban firefox gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center} gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar xdg-user-dirs apparmor"
-    packagesAur="google-chrome minecraft-launcher plata-theme-gnome psensor-git"
+    packagesArch="pacman-contrib qemu bridge-utils ovmf bleachbit gedit bleachbit chrome-gnome-shell clamtk code fail2ban firefox gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center} gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar xdg-user-dirs apparmor gvfs-mtp"
+    packagesAur="google-chrome minecraft-launcher plata-theme-gnome psensor-git scrcpy"
     packagesAurEol="spotify"
     if [[ ! -f /usr/bin/yay ]]; then
         echo -e "\n\n\n${red}${boldText}:: ERROR: Yay AUR Helper was not found on this system and it is being installed now. Please wait...${normalText}\n"
