@@ -227,7 +227,7 @@ function baseSetup() {
     printf "function update-grub {\n    sudo grub-mkconfig -o /boot/grub/grub.cfg\n}" /etc/profile.d/update-grub.sh
     printf "function update-initramfs {\n    sudo mkinitcpio -P\n}" /etc/profile.d/update-initramfs.sh
     source /etc/profile.d/update-grub.sh && source /etc/profile.d/update-initramfs.sh
-    printf "#!/bin/bash
+    printf '#!/bin/bash
 
 function mirror-alcatel {
     deviceIp="172.16.255.244"
@@ -235,27 +235,27 @@ function mirror-alcatel {
     deviceName="Alcatel 1S (2019)"
 
     clear
-    echo -e ':: Before you can mirror your smartphone's screen you need to enable developer tools, USB debugging and then, after connecting the device, allow access for ADB. Afterwards, select MTP.'
-    read -n1 -p 'Press any key to continue...'
+    echo -e ":: Before you can mirror your smartphone screen you need to enable developer tools, USB debugging and then, after connecting the device, allow access for ADB. Afterwards, select MTP."
+    read -n1 -p "Press any key to continue... "
 
-    echo -n ':: Starting ADB server... '
+    echo -n ":: Starting ADB server... "
     adb start-server &>/dev/null && echo -e "done" || echo -e "failed"
 
-    echo -n ':: Enabling device over TCP/IP... '
+    echo -n ":: Enabling device over TCP/IP... "
     adb tcpip 5555 &>/dev/null && echo -e "done" || echo -e "failed"
 
-    echo -e ':: Unplug the device now'
-    read -n1 -p 'PRESS ANY KEY TO CONTINUE...'
+    echo -e ":: Unplug the device now"
+    read -n1 -p "PRESS ANY KEY TO CONTINUE..."
 
-    echo -n ':: Connecting to device "${deviceName}"... '
-    adb connect "${deviceIp}":5555 &>/dev/null && echo -e "done" || echo -e "failed"
+    echo -n ":: Connecting to device ${deviceName}... "
+    adb connect ${deviceIp}:5555 &>/dev/null && echo -e "done" || echo -e "failed"
 
-    echo -e ':: Connected to device: "${deviceName}"'
+    echo -e ":: Connected to device: ${deviceName} "
     scrcpy --always-on-top -Sw --window-title "5024D_EEA" &>/dev/null
 
-    echo -n ':: Closing ADB server... '
+    echo -n ":: Closing ADB server... "
     adb kill-server &>/dev/null && echo -e "done" || echo -e "failed"
-}" > /etc/profile.d/mirror-alcatel.sh
+}' > /etc/profile.d/mirror-alcatel.sh
 
     sudo pacman -S grub --noconfirm --needed
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux
@@ -332,7 +332,6 @@ for XUSER in $XUSERS; do
 done" > /etc/clamav/detected.sh && aa-complain clamd &>/dev/null && sed -i 's/#User clamav/User root/g' /etc/clamav/clamd.conf && sed -i 's/#LocalSocket /run/clamav/clamd.ctl/LocalSocket /run/clamav/clamd.ctl/g' /etc/clamav/clamd.conf && sudo systemctl restart clamav-daemon
     xdg-user-dirs-update
     sed -i 's/SHUTDOWN_TIMEOUT=suspend/SHUTDOWN_TIMEOUT=shutdown/g' /usr/lib/libvirt/libvirt-guests.sh && systemctl enable --now libvirt-guests
-    
 }
 
 # Initialize script functions in this order
