@@ -269,7 +269,7 @@ function aurSetup() {
 }
 
 function extrasSetup() {
-    packagesArch="pacman-contrib qemu bridge-utils ovmf bleachbit gedit bleachbit chrome-gnome-shell clamtk code fail2ban firefox gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center} gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar xdg-user-dirs"
+    packagesArch="pacman-contrib qemu bridge-utils ovmf bleachbit gedit bleachbit chrome-gnome-shell clamtk code fail2ban firefox gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center} gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar xdg-user-dirs apparmor"
     packagesAur="google-chrome minecraft-launcher plata-theme-gnome psensor-git"
     packagesAurEol="spotify"
     if [[ ! -f /usr/bin/yay ]]; then
@@ -277,6 +277,7 @@ function extrasSetup() {
         aurSetup
     fi
     yay -Syu --noconfirm && yay -S ${packagesArch} ${packagesAur} ${packagesAurEol} --noconfirm --needed
+    freshclam && systemctl enable --now clamav-freshclam
     xdg-user-dirs-update
 }
 
