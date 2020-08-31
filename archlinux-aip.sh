@@ -77,7 +77,6 @@ function root {
             echo "\n\n\n${red}${boldText}:: ERROR: Passwords did not match. Try again.${normalText}\n"
         fi
         done
-
 	    printf "[Pacman Mirrorlist Settings]
 country="${country}"
 
@@ -201,37 +200,63 @@ function baseSetup() {
 
     arch-chroot /mnt
 
-    pacman -Sy && pacman -S reflector
-    reflector --country ${country} --sort rate --save /etc/pacman.d/mirrorlist
+    pacman -Sy && pacman -S reflector && reflector --country ${country} --sort rate --save /etc/pacman.d/mirrorlist
 
-    sed -i 's/#[multilib]
-#Include = /etc/pacman.d/mirrorlist/[multilib]
-Include = /etc/pacman.d/mirrorlist/g' /etc/pacman.conf
-sed -i 's/#RemoteFileSigLevel = Required/RemoteFileSigLevel = Required/g' /etc/ pacman.conf
+    sed -i 's/#[multilib]/[multilib]/g' /etc/pacman.conf
+    sed -i '#Include = /etc/pacman.d/mirrorlist/Include = /etc/pacman.d/mirrorlist/g' /etc/pacman.conf
+    sed -i 's/#RemoteFileSigLevel = Required/RemoteFileSigLevel = Required/g' /etc/pacman.conf
+    
+    pacman -Syyy && pacman -Syu
 
-    ln -sf /usr/share/zoneinfo/${region}/${city} /etc/localtime
-    hwclock --systohc
+    ln -sf /usr/share/zoneinfo/${region}/${city} /etc/localtime && hwclock --systohc && sed -i 's/#${lang}/${lang}/g' /etc/locale.gen && locale-gen
 
-    sed -i 's/#${lang}/${lang}/g' /etc/locale.gen
-    locale-gen
-
-    printf 'LANG=${lang}' > /etc/locale.conf
-    printf 'KEYMAP=${keymap)' > /etc/vconsole.conf
-    printf 'export EDITOR=${editor}\nQT_QPA_PLATFORM=${qtplatform}\nQT_QPA_PLATFORMTHEME=${qtplatformtheme}' >> /etc/enviroment
-    printf 'alias ron='xhost si:localuser:root'\nalias roff='xhost -si:localuser:root'\nalias ll='ls -ali --color=auto'' > ~/.bash_aliases
-    printf '# Load aliases and profile variables\nif [[ -f /etc/profile ]]; then\n    source /etc/profile\nfi\nif [[ -f ~/.bash_aliases ]]; then\n    source ~/.bash_aliases\nfi\n# PS1='[\u@\h \W] \$ '\nPS1='\u@\h \W \$ '' > ~/.bashrc
+    printf "LANG="${lang}"" > /etc/locale.conf
+    printf "KEYMAP="${keymap)"" > /etc/vconsole.conf
+    printf "export EDITOR="${editor}"\nQT_QPA_PLATFORM="${qtplatform}"\nQT_QPA_PLATFORMTHEME="${qtplatformtheme}"" >> /etc/enviroment
+    printf "alias ron='xhost si:localuser:root'\nalias roff='xhost -si:localuser:root'\nalias ll='ls -ali --color=auto'" > ~/.bash_aliases
+    printf "# Load aliases and profile variables\nif [[ -f /etc/profile ]]; then\n    source /etc/profile\nfi\nif [[ -f ~/.bash_aliases ]]; then\n    source ~/.bash_aliases\nfi\n# PS1='[\u@\h \W] \$ '\nPS1='\u@\h \W \$ '" > ~/.bashrc
 
     cpuCores=$(grep -c ^processor /proc/cpuinfo)
     sed -i 's/#MAKEFLAGS="-j2"/MAKEFLAGS="-j${cpuCores}g' /etc/makepkg.conf
     sed -i 's/COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c -T ${cpuCores} -z -)/g' /etc/makepkg.conf
 
-    printf '${hostname}' > /etc/hostname
-    printf '127.0.0.1   localhost\n::1  localhost' > /etc/hosts
+    printf "${hostname}" > /etc/hostname
+    printf "127.0.0.1   localhost\n::1  localhost" > /etc/hosts
     pacman -S networkmanager --noconfirm --needed
 
-    printf 'function update-grub {\n    sudo grub-mkconfig -o /boot/grub/grub.cfg\n}' /etc/profile.d/update-grub.sh
-    printf 'function update-initramfs {\n    sudo mkinitcpio -P\n}' /etc/profile.d/update-initramfs.sh
+    printf "function update-grub {\n    sudo grub-mkconfig -o /boot/grub/grub.cfg\n}" /etc/profile.d/update-grub.sh
+    printf "function update-initramfs {\n    sudo mkinitcpio -P\n}" /etc/profile.d/update-initramfs.sh
     source /etc/profile.d/update-grub.sh && source /etc/profile.d/update-initramfs.sh
+    printf "#!/bin/bash
+
+function mirror-alcatel {
+    deviceIp="172.16.255.244"
+    internalDeviceName="5024D_EEA"
+    deviceName="Alcatel 1S (2019)"
+
+    clear
+    echo -e ':: Before you can mirror your smartphone's screen you need to enable developer tools, USB debugging and then, after connecting the device, allow access for ADB. Afterwards, select MTP.'
+    read -n1 -p 'Press any key to continue...'
+
+    echo -n ':: Starting ADB server... '
+    adb start-server &>/dev/null && echo -e "done" || echo -e "failed"
+
+    echo -n ':: Enabling device over TCP/IP... '
+    adb tcpip 5555 &>/dev/null && echo -e "done" || echo -e "failed"
+
+    echo -e ':: Unplug the device now'
+    read -n1 -p 'PRESS ANY KEY TO CONTINUE...'
+
+    echo -n ':: Connecting to device "${deviceName}"... '
+    adb connect "${deviceIp}":5555 &>/dev/null && echo -e "done" || echo -e "failed"
+
+    echo -e ':: Connected to device: "${deviceName}"'
+    scrcpy --always-on-top -Sw --window-title "5024D_EEA" &>/dev/null
+
+    echo -n ':: Closing ADB server... '
+    adb kill-server &>/dev/null && echo -e "done" || echo -e "failed"
+}" > /etc/profile.d/mirror-alcatel.sh
+
     sudo pacman -S grub --noconfirm --needed
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux
     update-grub
@@ -239,6 +264,8 @@ sed -i 's/#RemoteFileSigLevel = Required/RemoteFileSigLevel = Required/g' /etc/ 
 
     echo -e "\n:: Please type in a password for the root user"
     passwd root
+    
+    echo -e "\n"
 
     while true; do
         read -p ":: Do you want to create your own user? [Y/n] " $input
@@ -254,7 +281,7 @@ sed -i 's/#RemoteFileSigLevel = Required/RemoteFileSigLevel = Required/g' /etc/ 
 }
 
 function aurSetup() {
-    pacman -S git --noconfirm --needed &>/dev/null
+    pacman -S git --nocm --needed &>/dev/null
     if [[ ! -d /opt/yay-git ]]; then
         cd /opt/
         git clone -q https://aur.archlinux.org/yay-git.git
@@ -273,10 +300,10 @@ function extrasSetup() {
     packagesAur="google-chrome minecraft-launcher plata-theme-gnome psensor-git scrcpy"
     packagesAurEol="spotify"
     if [[ ! -f /usr/bin/yay ]]; then
-        echo -e "\n\n\n${red}${boldText}:: ERROR: Yay AUR Helper was not found on this system and it is being installed now. Please wait...${normalText}\n"
-        aurSetup
+        echo -e "\n\n\n${red}${boldText}:: ERROR: Yay AUR Helper was not found on this system and it is being installed now. Please wait...${normalText} "
+     aurSetup &>/dev/null && echo -e "${green}done${normalText}" || echo -e "${red}failed"
     fi
-    yay -Syu --noconfirm && yay -S ${packagesArch} ${packagesAur} ${packagesAurEol} --noconfirm --needed
+    yay -Syyy && yay -Syu --noconfirm && yay -S ${packagesArch} ${packagesAur} ${packagesAurEol} --noconfirm --needed
     freshclam && systemctl enable --now clamav-freshclam
     printf "#!/bin/bash
 PATH=/usr/bin
@@ -304,6 +331,8 @@ for XUSER in $XUSERS; do
                        /usr/bin/notify-send -i dialog-warning "clamAV" "$alert"
 done" > /etc/clamav/detected.sh && aa-complain clamd &>/dev/null && sed -i 's/#User clamav/User root/g' /etc/clamav/clamd.conf && sed -i 's/#LocalSocket /run/clamav/clamd.ctl/LocalSocket /run/clamav/clamd.ctl/g' /etc/clamav/clamd.conf && sudo systemctl restart clamav-daemon
     xdg-user-dirs-update
+    sed -i 's/SHUTDOWN_TIMEOUT=suspend/SHUTDOWN_TIMEOUT=shutdown/g' /usr/lib/libvirt/libvirt-guests.sh && systemctl enable --now libvirt-guests
+    
 }
 
 # Initialize script functions in this order
