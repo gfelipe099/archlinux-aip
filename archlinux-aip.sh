@@ -49,8 +49,8 @@ function welcome() {
     figlet -c "Arch Linux"
     figlet -c "AIP"
     sudo pacman -Rncsd figlet --noconfirm &>/dev/null
-    kernelVer="$(lsb_release -ds uname -r | sed -e 's/"/g')"
-    echo -e "Welcome to Arch Linux AIP!\n\n\nYour Arch Linux kernel version is: ${kernelVer}"
+    kernelVer="$(uname -r)"
+    echo -e "Welcome to Arch Linux AIP!\n\n\nKernel version: ${kernelVer}"
 }
 
 function root {
