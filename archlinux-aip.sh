@@ -68,6 +68,9 @@ function root {
         read -p "Which is your keyboard from? (For example: en): " keymap
         read -p "How shall your computer be known on the network and/or locally?: " hostname
         read -p "Now type in any username you like. Without spaces and lowercase: " username
+        read -p "Which is your favorite editor? (nano, vi or vim): " editor
+        read -p "Which platform do you prefer to use with QT applications? (wayland or xorg): " qtplatform
+        read -p "Which thteme do you prefer to use with QT applications? (gtk2 or gtk3): " qtplatformtheme
         while true; do
         read -sp "Please, enter a password: " password
         read -sp "Please, repeat the password: " password2
@@ -86,12 +89,15 @@ city="${city}"
 lang="${lang}"
 keymap="${keymap}"
 hostname="${hostname}"
+editor=${editor}
+qtplatform=${qtplatform}
+qtplatformtheme=${qtplatformtheme}
 
 [User Settings]
 username="${username}"
-password="${password}"" > archlinux-aip.conf
+password="${password}"" > conf/main.conf
         else
-            source archlinux-aip.conf
+            source conf/main.conf
             echo -e "${green}${boldText}:: Your configuration file was found and loaded successfully!${normalText}\n"
     fi
 }
@@ -211,7 +217,7 @@ function baseSetup() {
     ln -sf /usr/share/zoneinfo/${region}/${city} /etc/localtime && hwclock --systohc && sed -i 's/#${lang}/${lang}/g' /etc/locale.gen && locale-gen
 
     printf "LANG="${lang}"" > /etc/locale.conf
-    printf "KEYMAP="${keymap)"" > /etc/vconsole.conf
+    printf "KEYMAP="${keymap}"" > /etc/vconsole.conf
     printf "export EDITOR="${editor}"\nQT_QPA_PLATFORM="${qtplatform}"\nQT_QPA_PLATFORMTHEME="${qtplatformtheme}"" >> /etc/enviroment
     printf "alias ron='xhost si:localuser:root'\nalias roff='xhost -si:localuser:root'\nalias ll='ls -ali --color=auto'" > ~/.bash_aliases
     printf "# Load aliases and profile variables\nif [[ -f /etc/profile ]]; then\n    source /etc/profile\nfi\nif [[ -f ~/.bash_aliases ]]; then\n    source ~/.bash_aliases\nfi\n# PS1='[\u@\h \W] \$ '\nPS1='\u@\h \W \$ '" > ~/.bashrc
@@ -1485,7 +1491,7 @@ function aurSetup() {
 }
 
 function extrasSetup() {
-    packagesArch="pacman-contrib qemu bridge-utils ovmf bleachbit gedit bleachbit chrome-gnome-shell clamtk code fail2ban gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center,keyring} libgnome-keyring gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris wine-staging giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls mpg123 lib32-mpg123 openal lib32-openal v4l-utils lib32-v4l-utils libpulse lib32-libpulse libgpg-error lib32-libgpg-error alsa-plugins lib32-alsa-plugins alsa-lib lib32-alsa-lib libjpeg-turbo lib32-libjpeg-turbo sqlite lib32-sqlite libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs vulkan-icd-loader lib32-vulkan-icd-loader mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar unzip xdg-user-dirs apparmor gvfs-mtp gvfs-google cups hplip"
+    packagesArch="pacman-contrib qemu bridge-utils ovmf gedit bleachbit chrome-gnome-shell clamtk code fail2ban gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center,keyring} libgnome-keyring gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris wine-staging giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls mpg123 lib32-mpg123 openal lib32-openal v4l-utils lib32-v4l-utils libpulse lib32-libpulse libgpg-error lib32-libgpg-error alsa-plugins lib32-alsa-plugins alsa-lib lib32-alsa-lib libjpeg-turbo lib32-libjpeg-turbo sqlite lib32-sqlite libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs vulkan-icd-loader lib32-vulkan-icd-loader mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar unzip xdg-user-dirs apparmor gvfs-mtp gvfs-google cups hplip"
     packagesAur="brave-nightly-bin minecraft-launcher plata-theme-gnome psensor-git scrcpy"
     packagesAurEol="spotify"
     if [[ ! -f /usr/bin/yay ]]; then
