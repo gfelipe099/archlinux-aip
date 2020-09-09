@@ -243,13 +243,36 @@ net.ipv6.conf.all.secure_redirects = 1" > /etc/sysctl.conf && sysctl -p -q &>/de
     printf '#!/bin/bash
 
 function mirror-alcatel {
-    deviceIp="172.16.255.244"
-    internalDeviceName="5024D_EEA"
-    deviceName="Alcatel 1S (2019)"
 
     clear
-    echo -e ":: Before you can mirror your smartphone screen you need to enable developer tools, USB debugging and then, after connecting the device, allow access for ADB. Afterwards, select MTP."
-    read -n1 -p "Press any key to continue... "
+
+    if ! source ~/.config/mirror-alcatel/main.conf &>/dev/null; then
+
+        if [ ${deviceIp}="" ]; then
+            read -p "There is no device IP established. Please type your device IP address: " input1
+            deviceIp="${input1}"
+        fi
+
+        if [ ${internalDeviceName}="" ]; then
+            read -p "There is no internal device name established. Please type a name: " input2
+            internalDeviceName="${input2}"
+        fi
+
+        if [ ${deviceName}="" ]; then
+            read -p "There is no device name established. Please type a name: " input3
+            deviceName="${input3}"
+            
+            printf "[Settings]
+deviceIp="${input1}"
+internalDeviceName="${input2}"
+deviceName="${input3}"" > ~/.config/mirror-alcatel/main.conf
+        fi        
+        else
+            source ~/.config/mirror-alcatel/main.conf
+    fi
+
+    clear
+    read -n1 -p ":: Make sure to enable developer tools, USB debugging and enable MTP, then press any key to continue..."
 
     echo -n ":: Starting ADB server... "
     adb start-server &>/dev/null && echo -e "done" || echo -e "failed"
@@ -257,14 +280,13 @@ function mirror-alcatel {
     echo -n ":: Enabling device over TCP/IP... "
     adb tcpip 5555 &>/dev/null && echo -e "done" || echo -e "failed"
 
-    echo -e ":: Unplug the device now"
-    read -n1 -p "PRESS ANY KEY TO CONTINUE..."
+    read -n1 -p ":: Unplug the device now, then press any key to continue... "
 
-    echo -n ":: Connecting to device ${deviceName}... "
+    echo -n ":: Connecting to device ${internalDeviceName}... "
     adb connect ${deviceIp}:5555 &>/dev/null && echo -e "done" || echo -e "failed"
 
-    echo -e ":: Connected to device: ${deviceName} "
-    scrcpy --always-on-top -Sw --window-title "5024D_EEA" &>/dev/null
+    echo -n ":: Connected to device: ${internalDeviceName}"
+    scrcpy --always-on-top --window-title ${deviceName} &>/dev/null
 
     echo -n ":: Closing ADB server... "
     adb kill-server &>/dev/null && echo -e "done" || echo -e "failed"
