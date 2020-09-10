@@ -69,7 +69,7 @@ function root {
         read -p "How shall your computer be known on the network and/or locally?: " hostname
         read -p "Now type in any username you like. Without spaces and lowercase: " username
         read -p "Which is your favorite editor? (nano, vi or vim): " editor
-        read -p "Which platform do you prefer to use with QT applications? (wayland or xorg): " qtplatform
+        read -p "Which platform do you prefer to use with QT applications? (wayland or xcb): " qtplatform
         read -p "Which thteme do you prefer to use with QT applications? (gtk2 or gtk3): " qtplatformtheme
         while true; do
         read -sp "Please, enter a password: " password
@@ -331,14 +331,14 @@ function aurSetup() {
 }
 
 function extrasSetup() {
-    packagesArch="pacman-contrib qemu bridge-utils ovmf gedit bleachbit chrome-gnome-shell clamtk code fail2ban gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center,keyring} libgnome-keyring gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris wine-staging giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls mpg123 lib32-mpg123 openal lib32-openal v4l-utils lib32-v4l-utils libpulse lib32-libpulse libgpg-error lib32-libgpg-error alsa-plugins lib32-alsa-plugins alsa-lib lib32-alsa-lib libjpeg-turbo lib32-libjpeg-turbo sqlite lib32-sqlite libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs vulkan-icd-loader lib32-vulkan-icd-loader mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar unzip xdg-user-dirs apparmor gvfs-mtp gvfs-google cups hplip"
-    packagesAur="brave-nightly-bin minecraft-launcher plata-theme-gnome psensor-git scrcpy minecraft-launcher"
+    packagesArch="pacman-contrib qemu bridge-utils ovmf gedit bleachbit chrome-gnome-shell clamtk clamtk-gnome code fail2ban gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center,keyring} libgnome-keyring gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris wine-staging giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls mpg123 lib32-mpg123 openal lib32-openal v4l-utils lib32-v4l-utils libpulse lib32-libpulse libgpg-error lib32-libgpg-error alsa-plugins lib32-alsa-plugins alsa-lib lib32-alsa-lib libjpeg-turbo lib32-libjpeg-turbo sqlite lib32-sqlite libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs vulkan-icd-loader lib32-vulkan-icd-loader mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar unzip xdg-user-dirs apparmor gvfs-{mtp,google} cups hplip"
+    packagesAur="brave-nightly-bin minecraft-launcher plata-theme-gnome psensor-git scrcpy whatsapp-for-linux"
     packagesAurEol="spotify"
     if [[ ! -f /usr/bin/yay ]]; then
         echo -ne "\n\n\n${red}${boldText}:: ERROR: Yay AUR Helper was not found on this system and it is being installed now. Please wait...${normalText} "
 	aurSetup &>/dev/null && echo -e "${green}done${normalText}" || echo -e "${red}failed"
     fi
-    yay -Syyy && yay -Syu --noconfirm && yay -S ${packagesArch} ${packagesAur} ${packagesAurEol} --noconfirm --needed &>/dev/null
+    yay -Syyy && yay -Syu --noconfirm --needed && yay -S ${packagesArch} ${packagesAur} ${packagesAurEol} --noconfirm --needed &>/dev/null
     freshclam &>/dev/null && systemctl enable --now clamav-freshclam
     systemctl enable --now fail2ban
     printf "#!/bin/bash
