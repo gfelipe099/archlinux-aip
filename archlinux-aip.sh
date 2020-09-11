@@ -89,9 +89,9 @@ city="${city}"
 lang="${lang}"
 keymap="${keymap}"
 hostname="${hostname}"
-editor=${editor}
-qtplatform=${qtplatform}
-qtplatformtheme=${qtplatformtheme}
+editor="${editor} visudo"
+qtplatform="${qtplatform}"
+qtplatformtheme="${qtplatformtheme}"
 
 [User Settings]
 username="${username}"
@@ -712,12 +712,27 @@ function baseSetup() {
     sed -i 's/#MAKEFLAGS="-j2"/MAKEFLAGS="-j${cpuCores}g' /etc/makepkg.conf
     sed -i 's/COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c -T ${cpuCores} -z -)/g' /etc/makepkg.conf
     
-    printf "net.ipv4.conf.default.rp_filter=1
+    printf "kernel.dmesg_restrict = 1
+kernel.kptr_restrict = 1
+net.core.bpf_jit_harden=2
+kernel.yama.ptrace_scope=3
+kernel.kexec_load_disabled = 1
+net.ipv4.conf.default.rp_filter=1
 net.ipv4.conf.all.rp_filter=1
+net.ipv4.tcp_syncookies = 1
+net.ipv4.tcp_rfc1337 = 1
+net.ipv4.conf.default.log_martians = 1
+net.ipv4.conf.all.log_martians = 1
 net.ipv4.conf.all.accept_redirects = 0
+net.ipv4.conf.default.accept_redirects = 0
+net.ipv4.conf.all.secure_redirects = 0
+net.ipv4.conf.default.secure_redirects = 0
 net.ipv6.conf.all.accept_redirects = 0
-net.ipv4.conf.all.secure_redirects = 1
-net.ipv6.conf.all.secure_redirects = 1" > /etc/sysctl.conf && sysctl -p -q &>/dev/null
+net.ipv6.conf.default.accept_redirects = 0
+net.ipv4.conf.all.send_redirects = 0
+net.ipv4.conf.default.send_redirects = 0
+net.ipv4.icmp_echo_ignore_all = 1
+net.ipv6.icmp.echo_ignore_all = 1" > /etc/sysctl.conf && sysctl -p -q &>/dev/null
 
     printf "${hostname}" > /etc/hostname
     printf "127.0.0.1   localhost\n::1  localhost" > /etc/hosts
@@ -782,6 +797,8 @@ deviceName="${input3}"" > ~/.config/mirror-alcatel/main.conf
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux
     update-grub
     update-initramfs
+
+    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet selinux=1 security=selinux apparmor=1 security=apparmor audit=1 lockdown=mode intel_iommu=on iommu=pt isolcpus=2,3,4,5 nohz_full=2,3,4,5 rcu_nocbs=2,3,4,5 default_hugepagesz=1G hugepagesz=1G hugepages=16 rd.driver.pre=vfio-pci video=efifb:off" /etc/default/grub
 
     echo -e "\n:: Please type in a password for the root user"
     passwd root
@@ -854,6 +871,8 @@ for XUSER in $XUSERS; do
 done" > /etc/clamav/detected.sh && aa-complain clamd &>/dev/null &>/dev/null && sed -i 's/#User clamav/User root/g' /etc/clamav/clamd.conf && sed -i 's/#LocalSocket /run/clamav/clamd.ctl/LocalSocket /run/clamav/clamd.ctl/g' /etc/clamav/clamd.conf && sudo systemctl restart clamav-daemon
     xdg-user-dirs-update
     sed -i 's/ON_BOOT=start/ON_BOOT=ignore/g' /usr/lib/libvirt/libvirt-guests.sh && sed -i 's/ON_SHUTDOWN=suspend/ON_SHUTDOWN=shutdown/g' /usr/lib/libvirt/libvirt-guests.sh && systemctl enable --now libvirt-guests
+    systemctl enable --now apparmor && systemctl enable --now auditd
+
 }
 
 # Initialize script functions in this order
@@ -862,4 +881,3 @@ root
 diskPartitioning
 baseSetup
 extrasSetup
-
