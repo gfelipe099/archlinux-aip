@@ -70,7 +70,7 @@ function root {
         read -p "Now type in any username you like. Without spaces and lowercase: " username
         read -p "Which is your favorite editor? (nano, vi or vim): " editor
         read -p "Which platform do you prefer to use with QT applications? (wayland or xcb): " qtplatform
-        read -p "Which thteme do you prefer to use with QT applications? (gtk2 or gtk3): " qtplatformtheme
+        read -p "Which thteme do you prefer to use with QT applications? (gtk2, gtk3 or qt5ct): " qtplatformtheme
         while true; do
         read -sp "Please, enter a password: " password
         read -sp "Please, repeat the password: " password2
@@ -736,13 +736,12 @@ net.ipv6.icmp.echo_ignore_all = 1" > /etc/sysctl.conf && sysctl -p -q &>/dev/nul
 
     printf "${hostname}" > /etc/hostname
     printf "127.0.0.1   localhost\n::1  localhost" > /etc/hosts
-    pacman -S networkmanager --noconfirm --needed
+    pacman -S networkmanager --noconfirm --needed &>/dev/null
 
     printf "function update-grub {\n    sudo grub-mkconfig -o /boot/grub/grub.cfg\n}" /etc/profile.d/update-grub.sh
     printf "function update-initramfs {\n    sudo mkinitcpio -P\n}" /etc/profile.d/update-initramfs.sh
     source /etc/profile.d/update-grub.sh && source /etc/profile.d/update-initramfs.sh
-    printf '#!/bin/bash
-
+    
 function mirror-alcatel {
 
     clear
@@ -781,7 +780,7 @@ deviceName="${input3}"" > ~/.config/mirror-alcatel/main.conf
     echo -n ":: Enabling device over TCP/IP... "
     adb tcpip 5555 &>/dev/null && echo -e "done" || echo -e "failed"
 
-    read -n1 -p ":: Unplug the device now, then press any key to continue... "
+    read -n1 -p ":: Unplug the device now and press any key to continue... "
 
     echo -n ":: Connecting to device ${internalDeviceName}... "
     adb connect ${deviceIp}:5555 &>/dev/null && echo -e "done" || echo -e "failed"
@@ -793,12 +792,17 @@ deviceName="${input3}"" > ~/.config/mirror-alcatel/main.conf
     adb kill-server &>/dev/null && echo -e "done" || echo -e "failed"
 }' > /etc/profile.d/mirror-alcatel.sh
 
-    sudo pacman -S grub --noconfirm --needed
+    sudo pacman -S grub --noconfirm --needed &>/dev/null
     grub-install --target=x86_64-efi --efi-directory=/boot/efi --bootloader-id=archlinux
+    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet selinux=1 security=selinux apparmor=1 security=apparmor audit=1 lockdown=mode intel_iommu=on iommu=pt isolcpus=2,3,4,5 nohz_full=2,3,4,5 rcu_nocbs=2,3,4,5 default_hugepagesz=1G hugepagesz=1G hugepages=16 rd.driver.pre=vfio-pci video=efifb:off" > /etc/default/grub
+    
+    printf "options kvm_intel nested=1
+options kvm-intel enable_shadow_vmcs=1
+options kvm-intel enable_apicv=1
+options kvm-intel ept=1" > /etc/modprobe.d/kvm.conf
+
     update-grub
     update-initramfs
-
-    sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"/GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet selinux=1 security=selinux apparmor=1 security=apparmor audit=1 lockdown=mode intel_iommu=on iommu=pt isolcpus=2,3,4,5 nohz_full=2,3,4,5 rcu_nocbs=2,3,4,5 default_hugepagesz=1G hugepagesz=1G hugepages=16 rd.driver.pre=vfio-pci video=efifb:off" /etc/default/grub
 
     echo -e "\n:: Please type in a password for the root user"
     passwd root
@@ -834,16 +838,69 @@ function aurSetup() {
 }
 
 function extrasSetup() {
+    if [[ ${qtplatformtheme} != "qt5ct" ]]; then
     packagesArch="pacman-contrib qemu bridge-utils ovmf gedit bleachbit chrome-gnome-shell clamtk clamtk-gnome code fail2ban gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center,keyring} libgnome-keyring gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris wine-staging giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls mpg123 lib32-mpg123 openal lib32-openal v4l-utils lib32-v4l-utils libpulse lib32-libpulse libgpg-error lib32-libgpg-error alsa-plugins lib32-alsa-plugins alsa-lib lib32-alsa-lib libjpeg-turbo lib32-libjpeg-turbo sqlite lib32-sqlite libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva libva-{intel,mesa}-driver lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs vulkan-icd-loader lib32-vulkan-icd-loader mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar unzip xdg-user-dirs apparmor gvfs-{mtp,google} cups hplip"
-    packagesAur="brave-nightly-bin minecraft-launcher plata-theme-gnome psensor-git scrcpy whatsapp-for-linux"
-    packagesAurEol="spotify"
+    else
+        packagesArch="pacman-contrib qemu bridge-utils ovmf gedit bleachbit chrome-gnome-shell clamtk clamtk-gnome code fail2ban gimp adobe-source-han-{sans-cn-fonts,sans-tw-fonts,serif-cn-fonts,serif-tw-fonts} gnome-{backgrounds,screenshot,tweaks,terminal,control-center,keyring} libgnome-keyring gstreamer-vaapi intel-ucode libappindicator-{gtk2,gtk3} libreoffice libvdpau-va-gl lutris wine-staging giflib lib32-giflib libpng lib32-libpng libldap lib32-libldap gnutls lib32-gnutls mpg123 lib32-mpg123 openal lib32-openal v4l-utils lib32-v4l-utils libpulse lib32-libpulse libgpg-error lib32-libgpg-error alsa-plugins lib32-alsa-plugins alsa-lib lib32-alsa-lib libjpeg-turbo lib32-libjpeg-turbo sqlite lib32-sqlite libxcomposite lib32-libxcomposite libxinerama lib32-libgcrypt libgcrypt lib32-libxinerama ncurses lib32-ncurses opencl-icd-loader lib32-opencl-icd-loader libxslt lib32-libxslt libva libva-{intel,mesa}-driver lib32-libva gtk3 lib32-gtk3 gst-plugins-base-libs lib32-gst-plugins-base-libs vulkan-icd-loader lib32-vulkan-icd-loader mokutil nautilus neofetch papirus-icon-theme pcsx2 pulseaudio pulseaudio-{jack,bluetooth} steam telegram-desktop unrar unzip xdg-user-dirs apparmor gvfs-{mtp,google} cups hplip qt5ct"
+    fi
+    packagesAur="firefox-esr68 minecraft-launcher plata-theme-gnome psensor-git scrcpy whatsapp-for-linux spotify"
     if [[ ! -f /usr/bin/yay ]]; then
         echo -ne "\n\n\n${red}${boldText}:: ERROR: Yay AUR Helper was not found on this system and it is being installed now. Please wait...${normalText} "
     aurSetup &>/dev/null && echo -e "${green}done${normalText}" || echo -e "${red}failed"
     fi
-    yay -Syyy && yay -Syu --noconfirm --needed && yay -S ${packagesArch} ${packagesAur} ${packagesAurEol} --noconfirm --needed &>/dev/null
-    freshclam &>/dev/null && systemctl enable --now clamav-freshclam
-    systemctl enable --now fail2ban
+    if [[ "$(whoami)" != "root" ]]; then
+    printf "[Appearance]
+color_scheme_path=/usr/share/qt5ct/colors/darker.conf
+custom_palette=true
+icon_theme=Papirus-Dark
+standard_dialogs=default
+style=Fusion
+
+[Fonts]
+fixed=@Variant(\0\0\0@\0\0\0\f\0R\0o\0\x62\0o\0t\0o@&\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
+general=@Variant(\0\0\0@\0\0\0\f\0R\0o\0\x62\0o\0t\0o@&\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
+
+[Interface]
+activate_item_on_single_click=1
+buttonbox_layout=3
+cursor_flash_time=1200
+dialog_buttons_have_icons=1
+double_click_interval=400
+gui_effects=General, AnimateMenu, AnimateCombo, AnimateTooltip, AnimateToolBox
+keyboard_scheme=4
+menus_have_icons=true
+show_shortcuts_in_context_menus=true
+stylesheets=@Invalid()
+toolbutton_style=4
+underline_shortcut=1" > /home/$USER/.config/qt5ct/qt5ct.conf
+        else
+                printf "[Appearance]
+color_scheme_path=/usr/share/qt5ct/colors/darker.conf
+custom_palette=true
+icon_theme=Papirus-Dark
+standard_dialogs=default
+style=Fusion
+
+[Fonts]
+fixed=@Variant(\0\0\0@\0\0\0\f\0R\0o\0\x62\0o\0t\0o@&\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
+general=@Variant(\0\0\0@\0\0\0\f\0R\0o\0\x62\0o\0t\0o@&\0\0\0\0\0\0\xff\xff\xff\xff\x5\x1\0\x32\x10)
+
+[Interface]
+activate_item_on_single_click=1
+buttonbox_layout=3
+cursor_flash_time=1200
+dialog_buttons_have_icons=1
+double_click_interval=400
+gui_effects=General, AnimateMenu, AnimateCombo, AnimateTooltip, AnimateToolBox
+keyboard_scheme=4
+menus_have_icons=true
+show_shortcuts_in_context_menus=true
+stylesheets=@Invalid()
+toolbutton_style=4
+underline_shortcut=1" > /root/.config/qt5ct/qt5ct.conf
+    fi
+    yay -Syyy && yay -Syu --noconfirm --needed && yay -S ${packagesArch} ${packagesAur} --noconfirm --needed &>/dev/null
+    freshclam &>/dev/null && systemctl enable --now clamav-freshclam && systemctl enable --now fail2ban
     printf "#!/bin/bash
 PATH=/usr/bin
 alert="Signature detected: $CLAM_VIRUSEVENT_VIRUSNAME in $CLAM_VIRUSEVENT_FILENAME"
