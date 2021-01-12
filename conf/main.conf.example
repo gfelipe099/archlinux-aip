@@ -1,7 +1,7 @@
-[Pacman Mirrorlist Settings]
+# Pacman Mirrorlist Settings
 country="United States"
 
-[System Settings]
+# System Settings
 region="America"
 city="Detroit"
 lang="en_US.UTF-8"
@@ -11,6 +11,6 @@ editor="nano"
 qtplatform="wayland"
 qtplatformtheme="gtk3"
 
-[User Settings]
+# User Settings
 username="Someone"
 password="12345678abc"
