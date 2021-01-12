@@ -1,0 +1,338 @@
+#!/bin/bash
+
+#
+# Created by Liam Powell (gfelipe099)
+# archlinux-aip.sh file
+# For Arch Linux amd64
+#
+
+welcome() {
+    clear
+    sudo pacman -S figlet --noconfirm --needed &>/dev/null
+    figlet -c "Arch Linux"
+    figlet -c "AIP"
+    sudo pacman -Rncsd figlet --noconfirm &>/dev/null
+    kernelVer="$(uname -r)"
+    echo "Welcome to the Arch Linux Automated Installation Procedure tool or archlinux-aip!"
+    echo "Created by Liam Powell (gfelipe099)"
+    echo "Kernel version in use: ${kernelVer}" && echo ""
+}
+
+root() {
+    # based of
+    # source: https://github.com/ChrisTitusTech/ArchMatic
+    # author: ChrisTitusTech
+    if [[ ! -d ~/.config/archlinux-aip/ ]]; then
+        mkdir -p ~/.config/archlinux-aip/
+    fi
+
+    if [ ! -f ~/.config/archlinux-aip/main.conf &>/dev/null ]; then
+        echo ":: ERROR: Configuration file 'archlinux-aip.conf' not found. Creating a new one...\n" && echo ""
+        echo "--> Pacman Mirrorlist Settings" && echo ""
+        read -p ":: Where do you live? (Example: United States): " country && echo "" && echo ""
+        echo "--> System Settings" && echo ""
+        read -p ":: Which is your region? (Example: US): " region
+        read -p ":: Which is your city? (Example: California): " city
+        read -p ":: Which language do you natively speak? (Example: en_US.UTF-8): " lang
+        read -p ":: Which is your keyboard from? (Example: en): " keymap
+        read -p ":: How shall your computer be known on the network and/or locally?: " hostname
+        read -p ":: Now type in your username (All lowercase and without spaces): " username
+        read -p ":: Which is your favorite editor? (nano, vi or vim): " editor
+        read -p ":: Which platform do you prefer to use with QT applications? (wayland or xcb): " qtplatform
+        read -p ":: Which theme do you prefer to use with QT applications? (gtk2, gtk3 or qt5ct): " qtplatformtheme
+        while true; do
+        read -sp ":: Type a password for the username "${username}": " password1
+        echo ""
+        read -sp ":: Repeat the password: " password2
+
+        # Check if both passwords match
+        if [ "${password1}" != "${password2}" ]; then
+            echo ":: ERROR: Passwords did not match. Try again." && echo ""
+            else
+                break
+        fi
+        done
+        printf "# Pacman Mirrorlist Settings\ncountry="${country}"\n\n# System Settings\nregion="${region}"\ncity="${city}"\nlang="${lang}"\nkeymap="${keymap}"\nhostname="${hostname}"\neditor="${editor}"\nqtplatform="${qtplatform}"\nqtplatformtheme="${qtplatformtheme}"\n\n# User Settings\nusername="${username}"\npassword="${password}"" > ~/.config/archlinux-aip/main.conf
+        else
+            . ~/.config/archlinux-aip/main.conf &>/dev/null
+            echo ":: Your configuration file was found and loaded successfully!"
+    fi
+}
+
+diskPartitioning() {
+    echo ":: Installing dependencies..."
+    pacman -Syyy &>/dev/null && sudo pacman -S cryptsetup lvm2 --needed --noconfirm &>/dev/null
+
+    read -p ":: Specify a device to setup ('/dev/' is not needed): " disk
+    echo ":: Creating GUID Partition Table (GPT) on device /dev/${disk}..."
+    parted /dev/${disk} mklabel gpt &>/dev/null
+
+    echo ":: Creating EFI partition... \n"
+    sgdisk /dev/${disk} -n=1:0:+100M -t=1:ef00 &>/dev/null
+
+    echo ":: Creating boot partition... \n"
+    sgdisk /dev/${disk} -n=2:0:+500M -t=1:8200 &>/dev/null
+
+    echo "" && echo "" && echo ""
+
+    lsblk
+
+    echo ""
+    read -p ":: Specify the EFI partition ('/dev/' is not needed): " efiPartition
+    if [ -z efiPartition ]; then
+        echo ":: ERROR: No EFI partition was specified. Closing..."
+        exit
+    fi
+
+    echo ""
+    read -p ":: Specify the boot partition ('/dev/' is not needed): " bootPartition
+    if [ -z ${bootPartition} ]; then
+        echo ":: ERROR: No boot partition was specified. Closing..."
+        exit
+    fi
+
+    echo ""
+    read -p ":: Select a device to encrypt ('/dev/' is not needed): " luksDevice
+    if [ -z ${luksDevice} ]; then
+        echo "No device to encrypt was specified. Closing..."
+        exit
+    fi
+    cryptsetup luksFormat /dev/${luksDevice}
+    luksDeviceUuid=$(blkid -s UUID -o value /dev/${luksDevice})
+    
+    echo ""
+    read -p ":: Type a name for the LUKS container in /dev/${luksDevice}, afterwards, unlock it: " luksContainer
+    cryptsetup open /dev/${luksDevice} ${luksContainer}
+
+    echo ""
+    echo ":: Creating physical LVM volume on /dev/${luksContainer}... "
+    pvcreate /dev/mapper/${luksContainer} &>/dev/null
+
+    echo -e "\n"
+    read -p ":: Type a name for the LVM group: " lvmGroup
+    vgcreate ${lvmGroup} /dev/${luksContainer}
+
+    while true; do
+        read -p ":: Do you want to create a swap partition? [Y/N] " input
+            case ${input} in
+                [Yy]* ) read -p "How much space do you want to allocate for the swap partition? (Example: 4G): " swapLvmPartitionSize; lvcreate -L ${swapLvmPartitionSize} ${lvmGroup} -n swap; break;;
+                [Nn]* ) echo ":: WARNING: No swap file will be created by your request."; break;;
+                * ) echo -e ":: ERROR: Please type 'y' or 'n', and try again. \n"
+            esac
+    done
+
+    read -p ":: How much space do you want to allocate for the root partition? (Default: 30G): " rootLvmPartitionSize
+    lvcreate -L ${rootLvmPartitionSize} ${lvmGroup} -n root
+    if [ -z ${rootLvmPartitionSize} ]; then
+        rootLvmPartitionSize="30G"
+    fi
+
+    read -p ":: How much space do you want to allocate for the home partition? (Default: all space left): " homeLvmPartitionSize
+    if [ -z {homeLvmPartitionSize} ]; then
+        homeLvmPartitionSize="100%FREE"
+    fi
+    lvcreate -L ${homeLvmPartitionSize} ${lvmGroup} -n home
+
+    echo ":: Formatting devices in ${lvmGroup} with ext4 filesystem..."
+    mkfs.ext4 /dev/${lvmGroup}/root
+    mkfs.ext4 /dev/${lvmGroup}/home
+    if [[ -f /dev/${lvmGroup}/swap ]]; then
+        mkswap /dev/${lvmGroup}/swap
+    fi
+
+    echo ":: Mounting partitions..."
+    mount /dev/${lvmGroup}/root /mnt
+    mkdir /mnt/home && mount /dev/${lvmGroup}/home /mnt/home
+    if [[ -f /dev/${lvmGroup}/swap ]]; then
+        swapon /dev/${lvmGroup}/swap
+    fi
+    mkdir -p /boot/efi
+    mount /dev/${bootPartition} /mnt/boot
+    mount /dev/${efiPartition} /mnt/boot/efi
+
+    echo ":: Adding encrypt and lvm2 modules to /etc/mkinitcpio.conf... \n"
+    sed -i 's/HOOKS=(base udev autodetect modconf filesystems keyboard fsck)/HOOKS=(base udev autodetect keyboard keymap consolefont modconf block encrypt lvm2 filesystems fsck)' /etc/mkinitpcio.conf
+
+}
+
+baseSetup() {
+    echo ":: Installing base system... \n"
+    pacstrap /mnt base base-devel linux linux-headers linux-firmware &>/dev/null
+
+    echo ":: Generating UUID-based '/etc/fstab' file... \n"
+    genfstab -U /mnt > /mnt/etc/fstab
+
+    echo ":: Switching to installed base system... \n"
+    arch-chroot /mnt
+
+    echo ":: Selecting fastest mirror from ${country}..."
+    pacman -Sy && pacman -S reflector && reflector --country ${country} --sort rate --save /etc/pacman.d/mirrorlist
+
+    sed -i 's/#[multilib]/[multilib]/g' /etc/pacman.conf
+    sed -i '#Include = /etc/pacman.d/mirrorlist/Include = /etc/pacman.d/mirrorlist/g' /etc/pacman.conf
+    sed -i 's/#RemoteFileSigLevel = Required/RemoteFileSigLevel = Required/g' /etc/pacman.conf
+
+    echo "Applying user configuration..."
+    ln -sf /usr/share/zoneinfo/${region}/${city} /etc/localtime && hwclock --systohc && sed -i "s/#${lang}/${lang}/g" /etc/locale.gen && locale-gen &>/dev/null
+    printf "LANG="${lang}"" > /etc/locale.conf
+    printf "KEYMAP="${keymap}"" > /etc/vconsole.conf
+    printf "EDITOR="${editor}"\nQT_QPA_PLATFORM="${qtplatform}"\nQT_QPA_PLATFORMTHEME="${qtplatformtheme}"\nQT_PLUGIN_PATH=/usr/lib/qt/plugins" >> /etc/enviroment
+    printf "alias ron='xhost si:localuser:root'\nalias roff='xhost -si:localuser:root'\nalias ll='ls -ali --color=auto'\nalias cgwp='wallpaper-reddit'" > ~/.bash_aliases
+    printf "# Load aliases and profile variables\nif [[ -f /etc/profile ]]; then\n    source /etc/profile\nfi\nif [[ -f ~/.bash_aliases ]]; then\n    source ~/.bash_aliases\nfi\n# PS1='[\u@\h \W] \$ '\nPS1='\u@\h \W \$ '" > ~/.bashrc
+
+    coreCount=$(nproc)
+    sed -i "s/#MAKEFLAGS=-j"${coreCount}"/MAKEFLAGS=-j"${coreCount}"/g" /etc/makepkg.conf
+    sed -i "s/COMPRESSXZ=(xz -c -z -)/COMPRESSXZ=(xz -c -T "${cpuCores}" -z -)/g" /etc/makepkg.conf
+    
+    printf "kernel.dmesg_restrict = 1\nkernel.kptr_restrict = 1\nnet.core.bpf_jit_harden=2\nkernel.yama.ptrace_scope=3\nkernel.kexec_load_disabled = 1\nnet.ipv4.conf.default.rp_filter=1\nnet.ipv4.conf.all.rp_filter=1\nnet.ipv4.tcp_syncookies = 1\nnet.ipv4.tcp_rfc1337 = 1\nnet.ipv4.conf.default.log_martians = 1\nnet.ipv4.conf.all.log_martians = 1\nnet.ipv4.conf.all.accept_redirects = 0\nnet.ipv4.conf.default.accept_redirects = 0\nnet.ipv4.conf.all.secure_redirects = 0\nnet.ipv4.conf.default.secure_redirects = 0\nnet.ipv6.conf.all.accept_redirects = 0\nnet.ipv6.conf.default.accept_redirects = 0\nnet.ipv4.conf.all.send_redirects = 0\nnet.ipv4.conf.default.send_redirects = 0\nnet.ipv4.icmp_echo_ignore_all = 1\nnet.ipv6.icmp.echo_ignore_all = 1" > /etc/sysctl.conf && sysctl -p -q &>/dev/null
+    printf "${hostname}" > /etc/hostname
+    printf "127.0.0.1   localhost\n::1  localhost" > /etc/hosts
+
+
+
+    printf "options kvm_intel nested=1\noptions kvm-intel enable_shadow_vmcs=1\noptions kvm-intel enable_apicv=1\noptions kvm-intel ept=1\noptions kvm ignore_msrs=1\n" > /etc/modprobe.d/kvm.conf
+
+    echo -e "\n:: Please type in a password for the root user"
+    passwd root
+    
+    echo -e "\n"
+
+    while true; do
+        read -p ":: Do you want to create your own user? [Y/n] " $input
+        case $input in
+            [Yy]* ) useradd -m ${username}; passwd ${password}; exit;;
+            [Nn]* ) break;;
+            * ) echo ":: Invalid parameter, please type Yy or Nn instead.";;
+        esac
+    done
+
+    echo -e "\n:: Base system is now ready for use\n"
+    read -n1 -p ":: Press any key to continue..."
+}
+
+setupBootloader() {
+    if [ "$@" = "--install-grub-bootloader" ]; then
+        sudo pacman -S grub --noconfirm --needed &>/dev/null
+        grub-install --target=x86_64-efi --efi-directory=${efiPartition} --boot-directory=${bootPartition} --bootloader-id=archlinux
+        sed -i -e 's@GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet"@GRUB_CMDLINE_LINUX_DEFAULT="loglevel=3 quiet cryptdevice=UUID="${luksDeviceUuid}":"${luksContainer}" root=//dev//${lvmGroup}//root apparmor=1 security=apparmor audit=1 lockdown=mode intel_iommu=on iommu=pt isolcpus= nohz_full= rcu_nocbs= default_hugepagesz=1G hugepagesz=1G hugepages=0 rd.driver.pre=vfio-pci video=efifb:off"@g' /etc/default/grub
+        printf "function update-grub {\n    sudo grub-mkconfig -o /boot/grub/grub.cfg\n}" ~/update-grub.sh
+        printf "function update-initramfs {\n    sudo mkinitcpio -P\n}" ~/update-initramfs.sh
+        . /etc/profile.d/update-grub.sh && . ~/update-initramfs.sh
+        update-grub
+        update-initramfs
+    elif [ "$@" = "--install-systemd-boot" ]; then
+        echo "Not available yet"
+        exit
+    fi
+}
+
+aurSetup() {
+    pacman -Sy &>/dev/null && pacman -S git --noconfirm --needed &>/dev/null
+    if [ ! -d /opt/yay-git ]; then
+        mkdir -p /opt/yay-git
+        curl -sL https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=yay > PKGBUILD
+        makepkg -si --noconfirm &>/dev/null
+        else
+            cd /opt/yay-git/
+            curl -sL https://aur.archlinux.org/cgit/aur.git/plain/PKGBUILD?h=yay > PKGBUILD
+            makepkg -si --noconfirm &>/dev/null
+    fi
+}
+
+usage() {
+    cat << EOF
+
+Usage: archlinux-aip [--defaults,-d|--reset,-r|--auto,-a|--install-desktop,--desktop|--install-grub-bootloader|--install-systemd-boot|--help,-h]
+
+Options:
+--defaults,-d                 Uses defaults values found on GitHub repository
+--reset,-r                    Deletes user configuration
+--auto,-a                     Automatic installation [not yet implemented]
+--install-desktop,--desktop   Installs the specified desktop [not implemented]
+--install-grub-bootloader     Installs and configures GRUB bootloader
+--install-systemd-boot        Installs and configures systemd bootloader
+--help,-h                     Prints this help
+
+EOF
+}
+
+if [ -z "$@" ]; then
+    echo ":: ERROR: Missing required arguments"
+    usage
+    exit
+elif [ "$@" = "--help" ]; then
+    usage
+elif [ "$@" = "-h" ]; then
+    usage
+    else
+        echo ":: ERROR: "$@": Invalid command"
+        usage
+fi
+
+#
+# first of all, check if running as root
+#
+if [ "$(whoami)" != "root" ]; then
+    echo "This script must be executed as root." && echo ""
+    exit 0
+fi
+
+case "$@" in
+    --defaults|-d)
+        efiPartition="/boot/efi"
+        bootPartition="/boot"
+        luksContainer="archlinux"
+        echo "These values has been applied automatically:"
+        echo "    efiPartition  --> ${efiPartition}"
+        echo "    bootPartition --> ${bootPartition}"
+        echo "    luksContainer --> ${luksContainer}" && echo ""
+        exit
+        ;;
+    --reset|-r)
+        if [ -d ~/.config/archlinux ]; then
+            echo ":: Deleting user configuration..."
+            rm -rf "~/.config/archlinux-aip/"
+            echo ":: Configuration deleted successfully" && echo ""
+            else
+                echo ":: ERROR: Configuration directory not found or already deleted!"
+        fi
+        exit
+        ;;
+    --auto|-a)
+        echo ":: Not available yet..." && echo ""
+        exit
+        ;;
+    --install-desktop)
+        echo "::Not available yet..." && echo ""
+        exit
+        ;;
+    --install-grub-bootloader)
+        echo "::Not available yet..." && echo ""
+        exit
+        ;;
+    --install-systemd-bootloader)
+        echo "::Not available yet..." && echo ""
+        exit
+        ;;
+esac
+
+#
+# if there is no arguments display usage information
+#
+if [ -z "$@" ]; then
+    usage
+fi
+
+# Verify Arch Linux is running
+if [ ! -f /usr/bin/pacman ]; then
+    echo "Pacman Package Manager was not found in this system, execution aborted."
+    exit
+    else
+        pacman -Sy && pacman -S lsb-release --noconfirm --needed &>/dev/null
+        os=$(lsb_release -ds | sed 's/"//g')
+fi
+
+if [ "${os}" != "Arch Linux" ]; then
+    echo "You must be using Arch Linux to execute this script."
+    exit 1
+fi
